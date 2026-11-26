@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { redactAction } from "../../shared/describe";
 import type {
-  ActionRecord, ActionStatus, AgentState, ApprovalMode, BrowserAction, ControlCommand, LogEntry, ServerMessage,
+  ActionRecord, ActionStatus, AgentState, ApprovalMode, BrowserAction, ControlCommand, LogEntry, RiskLevel, ServerMessage,
 } from "../../shared/types";
 import type { AuditLog } from "../audit/auditLog";
 import type { BackupManager } from "../backup/backupManager";
 import type { BrowserController } from "../browser/controller";
 import type { ApprovalManager } from "../policy/approvals";
 import { assessRisk, requiresApproval } from "../policy/risk";
+
 
 interface Deps {
   browser: BrowserController;
@@ -35,6 +36,15 @@ export class TaskRunner {
 
   getState(): AgentState {
     return this.state;
+  }
+    /** Highest risk level among actions that actually ran since a point in time. */
+  highestRiskSince(iso: string): RiskLevel {
+    const order: RiskLevel[] = ["read_only", "reversible", "impactful", "destructive"];
+    let max = 0;
+    for (const r of this.records.values()) {
+      if (r.createdAt >= iso && r.status === "succeeded") max = Math.max(max, order.indexOf(r.risk));
+    }
+    return order[max];
   }
 
   hello(): ServerMessage {

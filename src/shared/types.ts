@@ -59,13 +59,83 @@ export interface BackupRecord {
 
 export interface LogEntry { level: "info" | "warn" | "error"; message: string; at: string }
 
-// ---- Phase B: goals & planning ----
+// ---- Phase B: goals ----
 export interface GoalPlan { summary: string; steps: string[]; risks: string[]; needsFromUser: string[] }
 
 export type GoalStatus =
   | "planning" | "awaiting_plan_approval" | "running" | "waiting_user" | "done" | "failed" | "stopped";
 
 export interface AgentStep { index: number; thought: string; decision: string; outcome?: string; at: string }
+
+// ---- Phase C: knowledge ----
+export type SkillStatus = "draft" | "tested" | "approved" | "stale" | "retired";
+
+export interface SkillStep { instruction: string; expected?: string }
+export interface SkillSource { url: string; researchId?: string; accessedAt: string }
+
+export interface Skill {
+  id: string;
+  version: number;
+  name: string;
+  purpose: string;
+  domains: string[];
+  prerequisites: string[];
+  inputs: string[];
+  steps: SkillStep[];
+  verification: string[];
+  failureCases: string[];
+  rollback: string;
+  risk: RiskLevel;
+  sources: SkillSource[];
+  status: SkillStatus;
+  confidence: "low" | "medium" | "high";
+  createdAt: string;
+  updatedAt: string;
+  testedAt?: string;
+  testEvidence?: string;
+  approvedAt?: string;
+  reviewer?: string;
+  lastValidatedAt?: string;
+  staleReason?: string;
+  lastUsedAt?: string;
+  uses: number;
+  successes: number;
+  derivedFromGoal?: string;
+  history: { version: number; at: string; change: string }[];
+}
+
+export interface SkillRef { id: string; version: number; name: string; status: SkillStatus }
+
+export interface ResearchNote {
+  id: string;
+  url: string;
+  title: string;
+  accessedAt: string;
+  contentHash: string;
+  relevant: boolean;
+  summary: string;
+  keyPoints: string[];
+  versionInfo?: string;
+  goalId?: string;
+}
+
+export interface SiteProfile {
+  domain: string;
+  firstSeen: string;
+  lastVisited: string;
+  visits: number;
+  titles: string[];
+  notes: string[];
+  pitfalls: string[];
+  skillIds: string[];
+}
+
+export interface KnowledgeSnapshot {
+  skills: Skill[];
+  research: ResearchNote[];
+  sites: SiteProfile[];
+  maxAgeDays: number;
+}
 
 export interface GoalRun {
   id: string;
@@ -80,6 +150,11 @@ export interface GoalRun {
   error?: string;
   startedAt: string;
   finishedAt?: string;
+  usedSkills: SkillRef[];
+  skippedSkills: { name: string; reason: string }[];
+  researchIds: string[];
+  testOfSkill?: SkillRef;
+  savedSkill?: SkillRef;
 }
 
 export interface ModelsInfo { available: boolean; models: string[]; defaultModel: string; error?: string }
@@ -97,7 +172,15 @@ export type ClientMessage =
   | { kind: "goal_plan_decision"; approved: boolean; feedback?: string }
   | { kind: "goal_reply"; text: string }
   | { kind: "goal_stop" }
-  | { kind: "models_refresh" };
+  | { kind: "models_refresh" }
+  | { kind: "knowledge_refresh" }
+  | { kind: "research_url"; url: string }
+  | { kind: "skill_draft_from_goal" }
+  | { kind: "skill_test"; skillId: string; inputs: Record<string, string> }
+  | { kind: "skill_approve"; skillId: string }
+  | { kind: "skill_revalidate"; skillId: string }
+  | { kind: "skill_retire"; skillId: string }
+  | { kind: "site_note_add"; domain: string; note: string; type: "note" | "pitfall" };
 
 export type ServerMessage =
   | { kind: "hello"; state: AgentState; browserOpen: boolean; taskId: string; approvalMode: ApprovalMode; records: ActionRecord[]; backups: BackupRecord[] }
@@ -108,4 +191,5 @@ export type ServerMessage =
   | { kind: "frame"; data: string }
   | { kind: "log"; entry: LogEntry }
   | { kind: "goal_update"; goal: GoalRun | null }
-  | { kind: "models"; info: ModelsInfo };
+  | { kind: "models"; info: ModelsInfo }
+  | { kind: "knowledge"; snapshot: KnowledgeSnapshot };

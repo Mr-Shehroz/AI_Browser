@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ActionRecord, AgentState, ApprovalMode, BackupRecord, ClientMessage, GoalRun,
-  LogEntry, ModelsInfo, PageObservation, ServerMessage,
+  KnowledgeSnapshot, LogEntry, ModelsInfo, PageObservation, ServerMessage,
 } from "@/shared/types";
 
 const AGENT_WS_URL = process.env.NEXT_PUBLIC_AGENT_WS_URL ?? "ws://127.0.0.1:4317";
@@ -23,6 +23,7 @@ export function useAgentSocket() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [goal, setGoal] = useState<GoalRun | null>(null);
   const [models, setModels] = useState<ModelsInfo | null>(null);
+  const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -79,6 +80,9 @@ export function useAgentSocket() {
           case "models":
             setModels(msg.info);
             break;
+          case "knowledge":
+            setKnowledge(msg.snapshot);
+            break;
         }
       };
     };
@@ -102,6 +106,6 @@ export function useAgentSocket() {
 
   return {
     connected, state, browserOpen, taskId, approvalMode, records, backups,
-    observation, logs, goal, models, send, subscribeFrames,
+    observation, logs, goal, models, knowledge, send, subscribeFrames,
   };
 }

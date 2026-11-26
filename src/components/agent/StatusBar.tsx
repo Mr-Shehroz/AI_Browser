@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { AgentState, ApprovalMode, ClientMessage, ControlCommand } from "@/shared/types";
 import { btn, btnDanger, btnPrimary } from "./ui";
 
@@ -28,8 +30,14 @@ const stateColor: Record<AgentState, string> = {
   stopped: "bg-ember",
 };
 
+const nav = [
+  { href: "/", label: "Studio" },
+  { href: "/knowledge", label: "Knowledge" },
+];
+
 export function StatusBar({ connected, state, browserOpen, taskId, approvalMode, send }: Props) {
   const control = (command: ControlCommand) => send({ kind: "control", command });
+  const pathname = usePathname();
 
   return (
     <header className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
@@ -37,6 +45,21 @@ export function StatusBar({ connected, state, browserOpen, taskId, approvalMode,
         <span className="font-display text-3xl font-black leading-none tracking-wide text-white">NexForce</span>
         <span className="text-sm text-dim">Browser agent</span>
       </div>
+
+      <nav aria-label="Main" className="flex gap-1 rounded-full border border-steel bg-deep/70 p-1">
+        {nav.map((n) => (
+          <Link
+            key={n.href}
+            href={n.href}
+            aria-current={pathname === n.href ? "page" : undefined}
+            className={`rounded-full px-3 py-1 text-sm font-semibold transition-colors ${
+              pathname === n.href ? "bg-teal text-[#04201d]" : "text-haze hover:text-white"
+            }`}
+          >
+            {n.label}
+          </Link>
+        ))}
+      </nav>
 
       <div className="flex items-center gap-2 rounded-full border border-steel bg-deep/70 px-3 py-1">
         <span className={`h-2 w-2 rounded-full ${connected ? stateColor[state] : "bg-ember"}`} aria-hidden />

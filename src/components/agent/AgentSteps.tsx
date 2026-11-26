@@ -4,7 +4,7 @@ import type { AgentStep } from "@/shared/types";
 
 const outcomeColor = (o?: string) =>
   !o ? "text-dim"
-  : o.startsWith("succeeded") || o === "finished" ? "text-teal/80"
+  : o.startsWith("succeeded") || o.startsWith("researched") || o === "finished" ? "text-teal/80"
   : o.startsWith("rejected") || o.startsWith("Not executed") ? "text-amber"
   : o.startsWith("failed") || o.startsWith("blocked") ? "text-ember"
   : "text-haze/70";

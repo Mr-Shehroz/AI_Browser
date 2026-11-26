@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const DECISION_ACTIONS = ["navigate", "click", "type", "press", "scroll", "back", "ask_user", "finish"] as const;
+export const DECISION_ACTIONS = ["navigate", "click", "type", "press", "scroll", "back", "research", "ask_user", "finish"] as const;
 
 const clip = (n: number) => z.string().transform((s) => s.slice(0, n));
 
@@ -16,7 +16,6 @@ export const decisionSchema = z.object({
 });
 export type Decision = z.infer<typeof decisionSchema>;
 
-// Flat schema: small local models follow this far more reliably than oneOf unions.
 export const decisionJsonSchema = {
   type: "object",
   properties: {
