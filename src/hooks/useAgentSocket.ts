@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
-  ActionRecord, AgentState, ApprovalMode, BackupRecord, ClientMessage, GoalRun,
+  ActionRecord, AgentState, ApprovalMode, BackupRecord, ClientMessage, CreativeSnapshot, GoalRun,
   KnowledgeSnapshot, LogEntry, ModelsInfo, PageObservation, ServerMessage,
 } from "@/shared/types";
 
@@ -24,6 +24,7 @@ export function useAgentSocket() {
   const [goal, setGoal] = useState<GoalRun | null>(null);
   const [models, setModels] = useState<ModelsInfo | null>(null);
   const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
+  const [creative, setCreative] = useState<CreativeSnapshot | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -83,6 +84,17 @@ export function useAgentSocket() {
           case "knowledge":
             setKnowledge(msg.snapshot);
             break;
+          case "creative":
+            setCreative(msg.snapshot);
+            break;
+          case "image_job_update":
+            setCreative((prev) => {
+              if (!prev) return prev;
+              const i = prev.jobs.findIndex((j) => j.id === msg.job.id);
+              const jobs = i === -1 ? [msg.job, ...prev.jobs] : prev.jobs.map((j) => (j.id === msg.job.id ? msg.job : j));
+              return { ...prev, jobs };
+            });
+            break;
         }
       };
     };
@@ -106,6 +118,6 @@ export function useAgentSocket() {
 
   return {
     connected, state, browserOpen, taskId, approvalMode, records, backups,
-    observation, logs, goal, models, knowledge, send, subscribeFrames,
+    observation, logs, goal, models, knowledge, creative, send, subscribeFrames,
   };
 }

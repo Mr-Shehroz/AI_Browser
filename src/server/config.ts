@@ -4,6 +4,8 @@ import type { ApprovalMode } from "../shared/types";
 
 const dataDir = path.join(process.cwd(), ".agent-data");
 const knowledgeDir = path.join(dataDir, "knowledge");
+const creativeDir = path.join(dataDir, "creative");
+const shareGpu = process.env.CREATIVE_SHARE_GPU;
 
 export const config = {
   host: "127.0.0.1",
@@ -20,7 +22,7 @@ export const config = {
 
   // Phase B
   ollamaUrl: process.env.OLLAMA_URL ?? "http://127.0.0.1:11434",
-  ollamaModel: process.env.OLLAMA_MODEL ?? "qwen3:8b",
+  ollamaModel: process.env.OLLAMA_MODEL ?? "qwen3:4b",
   ollamaNumCtx: Number(process.env.OLLAMA_NUM_CTX ?? 8192),
   ollamaThink: process.env.OLLAMA_THINK === undefined ? undefined : process.env.OLLAMA_THINK === "true",
   agentMaxSteps: Number(process.env.AGENT_MAX_STEPS ?? 25),
@@ -31,4 +33,14 @@ export const config = {
   sitesDir: path.join(knowledgeDir, "sites"),
   skillMaxAgeDays: Number(process.env.AGENT_SKILL_MAX_AGE_DAYS ?? 30),
   researchAllowPrivate: process.env.AGENT_RESEARCH_ALLOW_PRIVATE === "true",
+
+  // Phase D
+  creativeDir,
+  imagesDir: path.join(creativeDir, "images"),
+  uploadsDir: path.join(creativeDir, "uploads"),
+  comfyUrls: process.env.COMFYUI_URL
+    ? [process.env.COMFYUI_URL.replace(/\/$/, "")]
+    : ["http://127.0.0.1:8188", "http://127.0.0.1:8000"],
+  creativeShareGpu: (shareGpu === "always" || shareGpu === "never" ? shareGpu : "auto") as "auto" | "always" | "never",
+  minFreeDiskGb: Number(process.env.CREATIVE_MIN_FREE_DISK_GB ?? 2),
 };

@@ -31,7 +31,8 @@ const stateColor: Record<AgentState, string> = {
 };
 
 const nav = [
-  { href: "/", label: "Studio" },
+  { href: "/", label: "Browser" },
+  { href: "/create", label: "Create" },
   { href: "/knowledge", label: "Knowledge" },
 ];
 

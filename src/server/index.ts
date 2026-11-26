@@ -1,3 +1,4 @@
+import http from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
 import { z } from "zod";
 import type { ModelsInfo, ServerMessage } from "../shared/types";
@@ -5,6 +6,9 @@ import { AuditLog } from "./audit/auditLog";
 import { BackupManager } from "./backup/backupManager";
 import { BrowserController } from "./browser/controller";
 import { config } from "./config";
+import { ComfyClient } from "./creative/comfyClient";
+import { ImageStudio } from "./creative/imageStudio";
+import { createMediaHandler } from "./http/mediaServer";
 import { ResearchService } from "./knowledge/research";
 import { SiteProfiles } from "./knowledge/sites";
 import { SkillLibrary } from "./knowledge/skills";
@@ -22,6 +26,22 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("back") }),
   z.object({ type: z.literal("observe") }),
 ]);
+
+const imageRequestSchema = z.object({
+  mode: z.enum(["txt2img", "img2img", "upscale"]),
+  prompt: z.string().max(2000),
+  negative: z.string().max(1000).optional(),
+  model: z.string().max(300).optional(),
+  presetId: z.string().max(40).optional(),
+  quality: z.enum(["draft", "standard", "high"]),
+  aspect: z.enum(["1:1", "4:3", "3:4", "16:9", "9:16"]),
+  batch: z.number().int().min(1).max(4),
+  seed: z.number().int().min(0).max(4_294_967_295).optional(),
+  strength: z.number().min(0.1).max(1).optional(),
+  sourceUploadId: z.string().max(100).optional(),
+  sourceImage: z.string().max(100).optional(),
+  upscaleBy: z.union([z.literal(2), z.literal(4)]).optional(),
+});
 
 const id = z.string().min(1).max(100);
 
@@ -45,6 +65,9 @@ const clientSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("skill_revalidate"), skillId: id }),
   z.object({ kind: z.literal("skill_retire"), skillId: id }),
   z.object({ kind: z.literal("site_note_add"), domain: z.string().min(1).max(253), note: z.string().min(1).max(500), type: z.enum(["note", "pitfall"]) }),
+  z.object({ kind: z.literal("creative_refresh"), rescan: z.boolean().optional() }),
+  z.object({ kind: z.literal("image_job"), request: imageRequestSchema }),
+  z.object({ kind: z.literal("image_cancel"), jobId: id }),
 ]);
 
 async function main() {
@@ -94,6 +117,21 @@ async function main() {
     maxSteps: config.agentMaxSteps, defaultModel: config.ollamaModel,
   });
 
+  const studio = new ImageStudio({
+    comfy: new ComfyClient(config.comfyUrls),
+    llm, audit, emit: broadcast,
+    root: config.creativeDir,
+    imagesDir: config.imagesDir,
+    uploadsDir: config.uploadsDir,
+    shareGpu: config.creativeShareGpu,
+    minFreeDiskGb: config.minFreeDiskGb,
+    isAgentBusy: () => {
+      const g = goals.current();
+      return !!g && (g.status === "planning" || g.status === "running");
+    },
+  });
+  await studio.init();
+
   const refreshModels = async (): Promise<ModelsInfo> => {
     try {
       const models = await llm.listModels();
@@ -105,9 +143,12 @@ async function main() {
     }
   };
 
+  const httpServer = http.createServer(
+    createMediaHandler({ imagesDir: config.imagesDir, uploadsDir: config.uploadsDir, allowedOrigins: config.allowedOrigins }),
+  );
+
   const wss = new WebSocketServer({
-    host: config.host,
-    port: config.port,
+    server: httpServer,
     maxPayload: 1_000_000,
     verifyClient: ({ origin }: { origin: string }) => config.allowedOrigins.includes(origin),
   });
@@ -118,7 +159,9 @@ async function main() {
     sendTo(runner.hello());
     sendTo({ kind: "goal_update", goal: goals.current() });
     sendTo(knowledgeMessage());
+    sendTo({ kind: "creative", snapshot: studio.snapshot() });
     void refreshModels().then((info) => sendTo({ kind: "models", info }));
+    if (!studio.reachable) void studio.refresh(false); // picks up ComfyUI if it was started later
     ws.on("close", () => clients.delete(ws));
 
     ws.on("message", async (raw) => {
@@ -215,6 +258,19 @@ async function main() {
             await sites.addNote(msg.domain, msg.note, msg.type);
             broadcastKnowledge();
             break;
+
+          // ---- Phase D ----
+          case "creative_refresh":
+            await studio.refresh(!!msg.rescan);
+            break;
+          case "image_job": {
+            const job = studio.enqueue(msg.request);
+            runner.log("info", `Image job queued: ${job.request.mode === "upscale" ? "upscale" : job.request.prompt.slice(0, 60)}`);
+            break;
+          }
+          case "image_cancel":
+            await studio.cancel(msg.jobId);
+            break;
         }
       } catch (err) {
         runner.log("error", err instanceof Error ? err.message : String(err));
@@ -222,7 +278,9 @@ async function main() {
     });
   });
 
-  console.log(`[agent] ws://${config.host}:${config.port} · approvals: ${config.approvalMode} · model: ${config.ollamaModel}`);
+  httpServer.listen(config.port, config.host, () => {
+    console.log(`[agent] http+ws://${config.host}:${config.port} · approvals: ${config.approvalMode} · model: ${config.ollamaModel}`);
+  });
 
   const shutdown = async () => {
     await Promise.all([browser.close(), research.close()]);

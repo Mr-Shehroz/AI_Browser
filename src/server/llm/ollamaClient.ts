@@ -18,6 +18,26 @@ export class OllamaClient {
     return (data.models ?? []).map((m) => m.name).sort();
   }
 
+  /** Models currently loaded into memory. */
+  async listLoaded(): Promise<string[]> {
+    const res = await fetch(`${this.baseUrl}/api/ps`, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { models?: { name: string }[] };
+    return (data.models ?? []).map((m) => m.name);
+  }
+
+  /** Frees GPU memory so image generation can use it. Models reload automatically on the next request. */
+  async unloadAll(): Promise<void> {
+    for (const model of await this.listLoaded()) {
+      await fetch(`${this.baseUrl}/api/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model, keep_alive: 0 }),
+        signal: AbortSignal.timeout(15_000),
+      }).catch(() => {});
+    }
+  }
+
   /** Structured output: Ollama constrains the reply to the JSON schema; we still validate with zod. */
   async chatJSON<T>(opts: ChatJSONOptions<T>): Promise<T> {
     let messages = opts.messages;

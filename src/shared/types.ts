@@ -159,6 +159,98 @@ export interface GoalRun {
 
 export interface ModelsInfo { available: boolean; models: string[]; defaultModel: string; error?: string }
 
+// ---- Phase D: creative studio ----
+export type HardwareTier = "cpu" | "low" | "mid" | "high" | "ultra";
+
+export interface GpuInfo { name: string; vramGb: number; vramFreeGb?: number }
+
+export interface HardwareInfo {
+  os: string;
+  cpu: string;
+  cores: number;
+  ramGb: number;
+  gpus: GpuInfo[];
+  freeDiskGb?: number;
+  source: "comfyui" | "nvidia-smi" | "none";
+  tier: HardwareTier;
+  notes: string[];
+  detectedAt: string;
+}
+
+export type ModelFamily = "sd15" | "sdxl" | "flux" | "unknown";
+
+export interface CreativeModel {
+  name: string;
+  family: ModelFamily;
+  fits: "good" | "slow" | "too_big";
+  note: string;
+}
+
+export interface StylePreset { id: string; name: string; prompt: string; negative: string }
+
+export type ImageMode = "txt2img" | "img2img" | "upscale";
+export type ImageQuality = "draft" | "standard" | "high";
+export type ImageAspect = "1:1" | "4:3" | "3:4" | "16:9" | "9:16";
+
+export interface ImageJobRequest {
+  mode: ImageMode;
+  prompt: string;
+  negative?: string;
+  model?: string;
+  presetId?: string;
+  quality: ImageQuality;
+  aspect: ImageAspect;
+  batch: number;
+  seed?: number;
+  strength?: number;
+  sourceUploadId?: string;
+  sourceImage?: string;
+  upscaleBy?: 2 | 4;
+}
+
+export interface ImageSettings {
+  width: number;
+  height: number;
+  steps: number;
+  cfg: number;
+  sampler: string;
+  scheduler: string;
+  seed: number;
+  family: ModelFamily;
+  upscaleBy?: number;
+  upscaleModel?: string;
+}
+
+export type ImageJobStatus = "queued" | "running" | "done" | "failed" | "cancelled";
+
+export interface ImageJob {
+  id: string;
+  request: ImageJobRequest;
+  settings: ImageSettings;
+  status: ImageJobStatus;
+  progress: number;
+  note?: string;
+  promptId?: string;
+  images: string[];
+  error?: string;
+  createdAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
+}
+
+export interface CreativeSnapshot {
+  comfy: { reachable: boolean; url: string; version?: string; error?: string };
+  hardware: HardwareInfo | null;
+  models: CreativeModel[];
+  upscaleModels: string[];
+  presets: StylePreset[];
+  limits: { maxBatch: number; upscaleOptions: number[] };
+  recommendation: string;
+  jobs: ImageJob[];
+}
+
+// ---- Messages ----
 export type ControlCommand = "start_browser" | "close_browser" | "pause" | "resume" | "stop" | "new_task";
 
 export type ClientMessage =
@@ -180,7 +272,10 @@ export type ClientMessage =
   | { kind: "skill_approve"; skillId: string }
   | { kind: "skill_revalidate"; skillId: string }
   | { kind: "skill_retire"; skillId: string }
-  | { kind: "site_note_add"; domain: string; note: string; type: "note" | "pitfall" };
+  | { kind: "site_note_add"; domain: string; note: string; type: "note" | "pitfall" }
+  | { kind: "creative_refresh"; rescan?: boolean }
+  | { kind: "image_job"; request: ImageJobRequest }
+  | { kind: "image_cancel"; jobId: string };
 
 export type ServerMessage =
   | { kind: "hello"; state: AgentState; browserOpen: boolean; taskId: string; approvalMode: ApprovalMode; records: ActionRecord[]; backups: BackupRecord[] }
@@ -192,4 +287,6 @@ export type ServerMessage =
   | { kind: "log"; entry: LogEntry }
   | { kind: "goal_update"; goal: GoalRun | null }
   | { kind: "models"; info: ModelsInfo }
-  | { kind: "knowledge"; snapshot: KnowledgeSnapshot };
+  | { kind: "knowledge"; snapshot: KnowledgeSnapshot }
+  | { kind: "creative"; snapshot: CreativeSnapshot }
+  | { kind: "image_job_update"; job: ImageJob };
