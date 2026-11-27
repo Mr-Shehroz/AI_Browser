@@ -54,6 +54,10 @@ export class SkillLibrary {
     return list?.[list.length - 1];
   }
 
+  versionsOf(id: string): Skill[] {
+    return [...(this.versions.get(id) ?? [])];
+  }
+
   list(): Skill[] {
     return [...this.versions.keys()]
       .map((id) => this.latest(id)!)
@@ -90,6 +94,16 @@ export class SkillLibrary {
     return skill;
   }
 
+  /** Stores a complete version as-is. Used by knowledge-pack import. */
+  async importVersion(s: Skill): Promise<void> {
+    const list = (this.versions.get(s.id) ?? []).filter((v) => v.version !== s.version);
+    list.push(s);
+    list.sort((a, b) => a.version - b.version);
+    this.versions.set(s.id, list);
+    await this.persist(s);
+    void this.audit.write("skill_imported", { id: s.id, version: s.version, status: s.status });
+  }
+
   /** Status and bookkeeping changes update the current version in place, with a history entry. */
   async update(id: string, patch: Partial<Skill>, change: string): Promise<Skill> {
     const s = this.latest(id);
@@ -102,8 +116,9 @@ export class SkillLibrary {
     return s;
   }
 
-  /** True when the last test or freshness check is older than the window. */
+  /** True when the last test or freshness check is older than the window, or the skill came from another computer. */
   isDue(s: Skill): boolean {
+    if (s.importedAt && (!s.lastValidatedAt || s.lastValidatedAt < s.importedAt)) return true;
     const ref = s.lastValidatedAt ?? s.testedAt;
     if (!ref) return true;
     return Date.now() - Date.parse(ref) > this.maxAgeDays * 86_400_000;

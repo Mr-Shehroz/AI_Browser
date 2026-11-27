@@ -33,6 +33,7 @@ export class BrowserController {
       headless: this.opts.headless,
       viewport: this.opts.viewport,
       acceptDownloads: false,
+      args: ["--mute-audio"], // website sound must never reach the voice microphone
     });
     this.context.on("close", () => {
       this.context = null;

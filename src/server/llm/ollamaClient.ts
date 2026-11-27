@@ -44,7 +44,7 @@ export class OllamaClient {
     let lastError = "";
 
     for (let attempt = 0; attempt < 2; attempt++) {
-      const timeout = AbortSignal.timeout(180_000);
+      const timeout = AbortSignal.timeout(300_000);
       const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
       const body: Record<string, unknown> = {
         model: opts.model,
@@ -53,7 +53,9 @@ export class OllamaClient {
         format: opts.schema,
         options: { temperature: 0.1, num_ctx: this.numCtx },
       };
-      if (this.think !== undefined) body.think = this.think;
+      // Thinking models (qwen3, deepseek-r1) write long hidden reasoning first, which is very slow on CPU.
+      const think = this.think ?? (/^(qwen3|deepseek-r1)/i.test(opts.model) ? false : undefined);
+      if (think !== undefined) body.think = think;
 
       const res = await fetch(`${this.baseUrl}/api/chat`, {
         method: "POST",

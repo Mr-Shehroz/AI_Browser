@@ -58,4 +58,25 @@ export class SiteProfiles {
     if (!p.skillIds.includes(skillId)) p.skillIds.push(skillId);
     await this.save(p);
   }
+
+  /** Merges a profile from another computer: notes, pitfalls and linked skills are combined. */
+  async merge(p: SiteProfile): Promise<"new" | "merge"> {
+    const local = this.sites.get(p.domain);
+    if (!local) {
+      await this.save({ ...p });
+      return "new";
+    }
+    const uniq = (a: string[], b: string[]) => [...new Set([...a, ...b])];
+    await this.save({
+      ...local,
+      firstSeen: local.firstSeen < p.firstSeen ? local.firstSeen : p.firstSeen,
+      lastVisited: local.lastVisited > p.lastVisited ? local.lastVisited : p.lastVisited,
+      visits: Math.max(local.visits, p.visits),
+      titles: uniq(local.titles, p.titles).slice(0, 10),
+      notes: uniq(local.notes, p.notes),
+      pitfalls: uniq(local.pitfalls, p.pitfalls),
+      skillIds: uniq(local.skillIds, p.skillIds),
+    });
+    return "merge";
+  }
 }

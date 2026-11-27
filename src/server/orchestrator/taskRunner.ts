@@ -37,6 +37,13 @@ export class TaskRunner {
   getState(): AgentState {
     return this.state;
   }
+
+
+    riskOf(actionId: string): RiskLevel | undefined {
+    return this.records.get(actionId)?.risk;
+  }
+
+
     /** Highest risk level among actions that actually ran since a point in time. */
   highestRiskSince(iso: string): RiskLevel {
     const order: RiskLevel[] = ["read_only", "reversible", "impactful", "destructive"];

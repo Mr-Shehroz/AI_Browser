@@ -4,20 +4,14 @@ import { LogPanel } from "@/components/agent/LogPanel";
 import { StatusBar } from "@/components/agent/StatusBar";
 import { panel, panelTitle } from "@/components/agent/ui";
 import { useAgentSocket } from "@/hooks/useAgentSocket";
+import { PortablePanel } from "./PortablePanel";
 import { ResearchPanel } from "./ResearchPanel";
 import { SitesPanel } from "./SitesPanel";
 import { SkillCard } from "./SkillCard";
 
 export default function KnowledgeBoard() {
   const agent = useAgentSocket();
-  const k = (agent as typeof agent & {
-    knowledge?: {
-      skills?: Array<Parameters<typeof SkillCard>[0]["skill"]>;
-      maxAgeDays?: number;
-      research?: Parameters<typeof ResearchPanel>[0]["research"];
-      sites?: Parameters<typeof SitesPanel>[0]["sites"];
-    };
-  }).knowledge;
+  const k = agent.knowledge;
   const skills = k?.skills ?? [];
   const active = skills.filter((s) => s.status !== "retired");
   const retired = skills.filter((s) => s.status === "retired");
@@ -48,7 +42,7 @@ export default function KnowledgeBoard() {
             <div className={panel}>
               <h2 className={panelTitle}>Teach it your first skill</h2>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-haze/80">
-                Run a goal in the Studio. When it finishes, choose Save as skill and it appears here as a draft, ready to test.
+                Run a goal on the Browser page. When it finishes, choose Save as skill and it appears here as a draft, ready to test.
               </p>
             </div>
           ) : (
@@ -66,6 +60,7 @@ export default function KnowledgeBoard() {
         </section>
 
         <aside className="min-w-0 space-y-5">
+          <PortablePanel portable={agent.portable} send={agent.send} />
           <ResearchPanel research={k?.research ?? []} send={agent.send} />
           <SitesPanel sites={k?.sites ?? []} send={agent.send} />
           <LogPanel logs={agent.logs} />

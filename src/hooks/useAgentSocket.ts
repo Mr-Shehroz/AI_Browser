@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
-  ActionRecord, AgentState, ApprovalMode, BackupRecord, ClientMessage, CreativeSnapshot, GoalRun,
-  KnowledgeSnapshot, LogEntry, ModelsInfo, PageObservation, ServerMessage,
+  ActionRecord, AgentState, ApprovalMode, BackupRecord, ClientMessage, GoalRun,
+  KnowledgeSnapshot, LogEntry, ModelsInfo, PageObservation, PortableSnapshot, ServerMessage, VoiceStatus,
 } from "@/shared/types";
 
 const AGENT_WS_URL = process.env.NEXT_PUBLIC_AGENT_WS_URL ?? "ws://127.0.0.1:4317";
+
+export interface ChatReply { requestId: string; reply: string; task: string | null }
 
 export function useAgentSocket() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -24,7 +26,9 @@ export function useAgentSocket() {
   const [goal, setGoal] = useState<GoalRun | null>(null);
   const [models, setModels] = useState<ModelsInfo | null>(null);
   const [knowledge, setKnowledge] = useState<KnowledgeSnapshot | null>(null);
-  const [creative, setCreative] = useState<CreativeSnapshot | null>(null);
+  const [portable, setPortable] = useState<PortableSnapshot | null>(null);
+  const [voice, setVoice] = useState<VoiceStatus | null>(null);
+  const [chatReply, setChatReply] = useState<ChatReply | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -84,16 +88,14 @@ export function useAgentSocket() {
           case "knowledge":
             setKnowledge(msg.snapshot);
             break;
-          case "creative":
-            setCreative(msg.snapshot);
+          case "portable":
+            setPortable(msg.snapshot);
             break;
-          case "image_job_update":
-            setCreative((prev) => {
-              if (!prev) return prev;
-              const i = prev.jobs.findIndex((j) => j.id === msg.job.id);
-              const jobs = i === -1 ? [msg.job, ...prev.jobs] : prev.jobs.map((j) => (j.id === msg.job.id ? msg.job : j));
-              return { ...prev, jobs };
-            });
+          case "voice":
+            setVoice(msg.status);
+            break;
+          case "chat_reply":
+            setChatReply({ requestId: msg.requestId, reply: msg.reply, task: msg.task });
             break;
         }
       };
@@ -118,6 +120,6 @@ export function useAgentSocket() {
 
   return {
     connected, state, browserOpen, taskId, approvalMode, records, backups,
-    observation, logs, goal, models, knowledge, creative, send, subscribeFrames,
+    observation, logs, goal, models, knowledge, portable, voice, chatReply, send, subscribeFrames,
   };
 }

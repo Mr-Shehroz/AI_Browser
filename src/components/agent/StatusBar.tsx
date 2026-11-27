@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { AgentState, ApprovalMode, ClientMessage, ControlCommand } from "@/shared/types";
 import { btn, btnDanger, btnPrimary } from "./ui";
+import { AGENT_NAME } from "@/shared/persona";
 
 interface Props {
   connected: boolean;
@@ -32,7 +33,6 @@ const stateColor: Record<AgentState, string> = {
 
 const nav = [
   { href: "/", label: "Browser" },
-  { href: "/create", label: "Create" },
   { href: "/knowledge", label: "Knowledge" },
 ];
 
@@ -44,7 +44,7 @@ export function StatusBar({ connected, state, browserOpen, taskId, approvalMode,
     <header className="flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
       <div className="flex items-baseline gap-3">
         <span className="font-display text-3xl font-black leading-none tracking-wide text-white">NexForce</span>
-        <span className="text-sm text-dim">Browser agent</span>
+        <span className="text-sm text-dim">with {AGENT_NAME}, your browser agent</span>
       </div>
 
       <nav aria-label="Main" className="flex gap-1 rounded-full border border-steel bg-deep/70 p-1">

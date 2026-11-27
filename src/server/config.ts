@@ -4,8 +4,6 @@ import type { ApprovalMode } from "../shared/types";
 
 const dataDir = path.join(process.cwd(), ".agent-data");
 const knowledgeDir = path.join(dataDir, "knowledge");
-const creativeDir = path.join(dataDir, "creative");
-const shareGpu = process.env.CREATIVE_SHARE_GPU;
 
 export const config = {
   host: "127.0.0.1",
@@ -34,13 +32,17 @@ export const config = {
   skillMaxAgeDays: Number(process.env.AGENT_SKILL_MAX_AGE_DAYS ?? 30),
   researchAllowPrivate: process.env.AGENT_RESEARCH_ALLOW_PRIVATE === "true",
 
-  // Phase D
-  creativeDir,
-  imagesDir: path.join(creativeDir, "images"),
-  uploadsDir: path.join(creativeDir, "uploads"),
-  comfyUrls: process.env.COMFYUI_URL
-    ? [process.env.COMFYUI_URL.replace(/\/$/, "")]
-    : ["http://127.0.0.1:8188", "http://127.0.0.1:8000"],
-  creativeShareGpu: (shareGpu === "always" || shareGpu === "never" ? shareGpu : "auto") as "auto" | "always" | "never",
-  minFreeDiskGb: Number(process.env.CREATIVE_MIN_FREE_DISK_GB ?? 2),
+  // Phase F1
+  exportsDir: path.join(dataDir, "exports"),
+  appVersion: process.env.npm_package_version ?? "0.1.0",
+
+  // Phase F2: speech to text (whisper.cpp)
+  whisperBin: process.env.WHISPER_BIN ?? "D:\\Tools\\whisper\\Release\\whisper-cli.exe",
+  whisperModel: process.env.WHISPER_MODEL ?? "D:\\Tools\\whisper\\models\\ggml-base.bin",
+  whisperThreads: Number(process.env.WHISPER_THREADS ?? Math.max(1, Math.min(4, os.cpus().length))),
+  voiceTmpDir: path.join(dataDir, "voice-tmp"),
+
+  // Phase F2: Urdu text to speech (Piper)
+  piperBin: process.env.PIPER_BIN ?? "D:\\Tools\\piper\\piper.exe",
+  piperUrduVoice: process.env.PIPER_URDU_VOICE ?? "D:\\Tools\\piper\\voices\\ur_PK-aegis_female-medium.onnx",
 };

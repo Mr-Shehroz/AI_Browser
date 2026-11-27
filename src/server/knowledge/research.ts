@@ -74,6 +74,10 @@ export class ResearchService {
     return this.notes.get(id);
   }
 
+  has(id: string): boolean {
+    return this.notes.has(id);
+  }
+
   private async storedText(id: string): Promise<string | null> {
     try { return await readFile(path.join(this.dir, `${id}.txt`), "utf8"); } catch { return null; }
   }
@@ -126,6 +130,14 @@ export class ResearchService {
     this.notes.set(note.id, note);
     void this.audit.write("research_saved", { id: note.id, url: note.url, relevant: note.relevant });
     return note;
+  }
+
+  /** Adds a note from a knowledge pack, with its saved page text when present. */
+  async importNote(note: ResearchNote, text?: string): Promise<void> {
+    await writeJson(path.join(this.dir, `${note.id}.json`), note);
+    if (text !== undefined) await writeFile(path.join(this.dir, `${note.id}.txt`), text, "utf8");
+    this.notes.set(note.id, note);
+    void this.audit.write("research_imported", { id: note.id, url: note.url });
   }
 
   /** Re-reads a source and compares it with the copy saved when it was first read. */
